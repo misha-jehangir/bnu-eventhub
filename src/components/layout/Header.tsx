@@ -26,7 +26,7 @@ export function Header() {
 
   const navLinks = [
     { href: '/', label: 'Events', icon: Calendar },
-    { href: '/notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
+    { href: '/notifications', label: 'Notifications', icon: Bell, badge: unreadCount || 0 },
   ];
 
   return (

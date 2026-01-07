@@ -26,6 +26,27 @@ export function useUserRsvp(eventId: string) {
   });
 }
 
+// Get all event IDs that the current user has RSVP'd to
+export function useUserRsvpEventIds() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['user-rsvp-event-ids', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('rsvps')
+        .select('event_id')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      return data.map((r) => r.event_id);
+    },
+    enabled: !!user,
+  });
+}
+
 export function useEventRsvps(eventId: string) {
   return useQuery({
     queryKey: ['event-rsvps', eventId],
