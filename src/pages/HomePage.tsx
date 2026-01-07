@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, Sparkles } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { EventCard } from '@/components/events/EventCard';
 import { EventFilters } from '@/components/events/EventFilters';
 import { useEvents } from '@/hooks/useEvents';
-import { useOrganizers } from '@/hooks/useOrganizers';
+import { useOrganizers, useUserFollowedOrganizerIds } from '@/hooks/useOrganizers';
+import { useUserRsvpEventIds } from '@/hooks/useRsvps';
 import { useAuth } from '@/contexts/AuthContext';
 import { EventType } from '@/types/database';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,6 +18,9 @@ export default function HomePage() {
   const [eventType, setEventType] = useState<EventType | undefined>();
   const [organizerId, setOrganizerId] = useState<string | undefined>();
   const [showArchived, setShowArchived] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [onlyFollowed, setOnlyFollowed] = useState(false);
+  const [onlyRsvpd, setOnlyRsvpd] = useState(false);
 
   const { data: events, isLoading: eventsLoading } = useEvents({
     eventType,
@@ -24,11 +28,47 @@ export default function HomePage() {
     showArchived,
   });
   const { data: organizers } = useOrganizers();
+  const { data: followedOrganizerIds } = useUserFollowedOrganizerIds();
+  const { data: rsvpEventIds } = useUserRsvpEventIds();
+
+  // Apply client-side filters
+  const filteredEvents = useMemo(() => {
+    if (!events) return [];
+
+    return events.filter((event) => {
+      // Search filter (case-insensitive title match)
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        if (!event.title.toLowerCase().includes(query)) {
+          return false;
+        }
+      }
+
+      // Only followed organizers filter
+      if (onlyFollowed && followedOrganizerIds) {
+        if (!followedOrganizerIds.includes(event.organizer_id)) {
+          return false;
+        }
+      }
+
+      // Only RSVP'd events filter
+      if (onlyRsvpd && rsvpEventIds) {
+        if (!rsvpEventIds.includes(event.id)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [events, searchQuery, onlyFollowed, followedOrganizerIds, onlyRsvpd, rsvpEventIds]);
 
   const clearFilters = () => {
     setEventType(undefined);
     setOrganizerId(undefined);
     setShowArchived(false);
+    setSearchQuery('');
+    setOnlyFollowed(false);
+    setOnlyRsvpd(false);
   };
 
   return (
@@ -84,7 +124,7 @@ export default function HomePage() {
               Upcoming Events
             </h2>
             <p className="text-muted-foreground mt-1">
-              {events?.length || 0} events to explore
+              {filteredEvents.length} events to explore
             </p>
           </div>
         </div>
@@ -96,9 +136,16 @@ export default function HomePage() {
             organizerId={organizerId}
             showArchived={showArchived}
             organizers={organizers || []}
+            searchQuery={searchQuery}
+            onlyFollowed={onlyFollowed}
+            onlyRsvpd={onlyRsvpd}
+            showPersonalFilters={!!user}
             onEventTypeChange={setEventType}
             onOrganizerChange={setOrganizerId}
             onShowArchivedChange={setShowArchived}
+            onSearchQueryChange={setSearchQuery}
+            onOnlyFollowedChange={setOnlyFollowed}
+            onOnlyRsvpdChange={setOnlyRsvpd}
             onClearFilters={clearFilters}
           />
         </div>
@@ -117,9 +164,9 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        ) : events && events.length > 0 ? (
+        ) : filteredEvents.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {events.map((event, index) => (
+            {filteredEvents.map((event, index) => (
               <EventCard key={event.id} event={event} index={index} />
             ))}
           </div>

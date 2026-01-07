@@ -36,6 +36,27 @@ export function useOrganizer(organizerId: string) {
   });
 }
 
+// Get all organizer IDs that the current user follows
+export function useUserFollowedOrganizerIds() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['user-followed-organizer-ids', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('follows')
+        .select('organizer_id')
+        .eq('follower_id', user.id);
+
+      if (error) throw error;
+      return data.map((f) => f.organizer_id);
+    },
+    enabled: !!user,
+  });
+}
+
 export function useFollowStatus(organizerId: string) {
   const { user } = useAuth();
 

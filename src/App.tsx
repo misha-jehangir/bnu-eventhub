@@ -13,6 +13,7 @@ import EventRsvpsPage from "./pages/EventRsvpsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import OrganizerProfilePage from "./pages/OrganizerProfilePage";
 import OrganizerDetailPage from "./pages/OrganizerDetailPage";
+import MyEventsPage from "./pages/MyEventsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/organizer-profile" element={<OrganizerProfilePage />} />
             <Route path="/organizer/:organizerId" element={<OrganizerDetailPage />} />
+            <Route path="/my-events" element={<MyEventsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

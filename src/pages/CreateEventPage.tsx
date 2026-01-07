@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { z } from 'zod';
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ImageUpload } from '@/components/events/ImageUpload';
 import { useCreateEvent } from '@/hooks/useEvents';
 import { useAuth } from '@/contexts/AuthContext';
 import { EventType } from '@/types/database';
@@ -28,7 +30,6 @@ const eventSchema = z.object({
   venue: z.string().min(3, 'Venue must be at least 3 characters').max(200, 'Venue is too long'),
   event_date: z.string().min(1, 'Date and time is required'),
   event_type: z.enum(['academic', 'social', 'sports', 'cultural', 'workshop', 'career', 'other']),
-  poster_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
 });
 
 type EventFormValues = z.infer<typeof eventSchema>;
@@ -39,6 +40,7 @@ export default function CreateEventPage() {
   const navigate = useNavigate();
   const { profile, organizerProfile, isLoading: authLoading } = useAuth();
   const { mutate: createEvent, isPending } = useCreateEvent();
+  const [posterUrl, setPosterUrl] = useState<string | null>(null);
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
@@ -48,7 +50,6 @@ export default function CreateEventPage() {
       venue: '',
       event_date: '',
       event_type: 'other',
-      poster_url: '',
     },
   });
 
@@ -74,7 +75,7 @@ export default function CreateEventPage() {
         venue: values.venue,
         event_date: new Date(values.event_date).toISOString(),
         event_type: values.event_type,
-        poster_url: values.poster_url || undefined,
+        poster_url: posterUrl || undefined,
       },
       {
         onSuccess: () => {
@@ -192,16 +193,12 @@ export default function CreateEventPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="poster_url">Event Poster URL (optional)</Label>
-                  <Input
-                    id="poster_url"
-                    type="url"
-                    placeholder="https://example.com/poster.jpg"
-                    {...form.register('poster_url')}
+                  <Label>Event Poster (optional)</Label>
+                  <ImageUpload
+                    value={posterUrl}
+                    onChange={setPosterUrl}
+                    disabled={isPending}
                   />
-                  {form.formState.errors.poster_url && (
-                    <p className="text-sm text-destructive">{form.formState.errors.poster_url.message}</p>
-                  )}
                 </div>
 
                 <div className="flex gap-4 pt-4">

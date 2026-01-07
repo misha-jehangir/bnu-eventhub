@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { z } from 'zod';
@@ -17,10 +18,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ImageUpload } from '@/components/events/ImageUpload';
 import { useEvent, useUpdateEvent } from '@/hooks/useEvents';
 import { useAuth } from '@/contexts/AuthContext';
 import { EventType } from '@/types/database';
-import { useEffect } from 'react';
 import { format } from 'date-fns';
 
 const eventSchema = z.object({
@@ -29,7 +30,6 @@ const eventSchema = z.object({
   venue: z.string().min(3, 'Venue must be at least 3 characters').max(200, 'Venue is too long'),
   event_date: z.string().min(1, 'Date and time is required'),
   event_type: z.enum(['academic', 'social', 'sports', 'cultural', 'workshop', 'career', 'other']),
-  poster_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
 });
 
 type EventFormValues = z.infer<typeof eventSchema>;
@@ -42,6 +42,7 @@ export default function EditEventPage() {
   const { organizerProfile } = useAuth();
   const { data: event, isLoading: eventLoading } = useEvent(eventId!);
   const { mutate: updateEvent, isPending } = useUpdateEvent();
+  const [posterUrl, setPosterUrl] = useState<string | null>(null);
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
@@ -51,7 +52,6 @@ export default function EditEventPage() {
       venue: '',
       event_date: '',
       event_type: 'other',
-      poster_url: '',
     },
   });
 
@@ -71,8 +71,8 @@ export default function EditEventPage() {
         venue: event.venue,
         event_date: format(new Date(event.event_date), "yyyy-MM-dd'T'HH:mm"),
         event_type: event.event_type,
-        poster_url: event.poster_url || '',
       });
+      setPosterUrl(event.poster_url || null);
     }
   }, [event, form]);
 
@@ -86,7 +86,7 @@ export default function EditEventPage() {
           venue: values.venue,
           event_date: new Date(values.event_date).toISOString(),
           event_type: values.event_type,
-          poster_url: values.poster_url || null,
+          poster_url: posterUrl,
         },
       },
       {
@@ -216,16 +216,12 @@ export default function EditEventPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="poster_url">Event Poster URL (optional)</Label>
-                  <Input
-                    id="poster_url"
-                    type="url"
-                    placeholder="https://example.com/poster.jpg"
-                    {...form.register('poster_url')}
+                  <Label>Event Poster (optional)</Label>
+                  <ImageUpload
+                    value={posterUrl}
+                    onChange={setPosterUrl}
+                    disabled={isPending}
                   />
-                  {form.formState.errors.poster_url && (
-                    <p className="text-sm text-destructive">{form.formState.errors.poster_url.message}</p>
-                  )}
                 </div>
 
                 <div className="flex gap-4 pt-4">

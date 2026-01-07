@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
@@ -14,6 +15,7 @@ import {
   XCircle,
   AlertTriangle,
   MessageSquare,
+  Loader2,
 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,8 +36,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { RsvpButtons } from '@/components/events/RsvpButtons';
-import { useEvent, useEventRsvpCount, useEventPosts, useCancelEvent, useDeleteEvent } from '@/hooks/useEvents';
+import { useEvent, useEventRsvpCount, useEventPosts, useCancelEvent, useDeleteEvent, useCreateEventPost } from '@/hooks/useEvents';
 import { useFollowStatus, useFollowerCount, useToggleFollow } from '@/hooks/useOrganizers';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -53,6 +65,8 @@ export default function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const { user, profile, organizerProfile } = useAuth();
+  const [postDialogOpen, setPostDialogOpen] = useState(false);
+  const [postContent, setPostContent] = useState('');
 
   const { data: event, isLoading } = useEvent(eventId!);
   const { data: rsvpCount } = useEventRsvpCount(eventId!);
@@ -62,10 +76,25 @@ export default function EventDetailPage() {
   const { mutate: toggleFollow, isPending: isTogglingFollow } = useToggleFollow();
   const { mutate: cancelEvent, isPending: isCancelling } = useCancelEvent();
   const { mutate: deleteEvent, isPending: isDeleting } = useDeleteEvent();
+  const { mutate: createPost, isPending: isPostingUpdate } = useCreateEventPost();
 
   const isOwner = organizerProfile?.id === event?.organizer_id;
   const isStudent = profile?.role === 'student';
   const isPast = event ? new Date(event.event_date) < new Date() : false;
+
+  const handlePostUpdate = () => {
+    if (!postContent.trim()) return;
+    
+    createPost(
+      { eventId: eventId!, content: postContent.trim() },
+      {
+        onSuccess: () => {
+          setPostContent('');
+          setPostDialogOpen(false);
+        },
+      }
+    );
+  };
 
   if (isLoading) {
     return (
@@ -304,14 +333,50 @@ export default function EventDetailPage() {
                     View RSVPs
                   </Button>
 
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2"
-                    onClick={() => navigate(`/event/${event.id}/post`)}
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    Post Update
-                  </Button>
+                  <Dialog open={postDialogOpen} onOpenChange={setPostDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        Post Update
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Post Event Update</DialogTitle>
+                        <DialogDescription>
+                          Share an update with everyone who RSVP'd to this event.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <Textarea
+                        placeholder="Write your update here..."
+                        value={postContent}
+                        onChange={(e) => setPostContent(e.target.value)}
+                        rows={4}
+                      />
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={() => setPostDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handlePostUpdate}
+                          disabled={!postContent.trim() || isPostingUpdate}
+                          className="bg-gradient-primary"
+                        >
+                          {isPostingUpdate ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Posting...
+                            </>
+                          ) : (
+                            'Post Update'
+                          )}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
 
                   {!event.is_cancelled && (
                     <AlertDialog>

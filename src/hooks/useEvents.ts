@@ -36,6 +36,26 @@ export function useEvents(filters?: { eventType?: EventType; organizerId?: strin
   });
 }
 
+// Get all events for a specific organizer
+export function useOrganizerEvents(organizerId: string | undefined) {
+  return useQuery({
+    queryKey: ['organizer-events', organizerId],
+    queryFn: async () => {
+      if (!organizerId) return [];
+
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('organizer_id', organizerId)
+        .order('event_date', { ascending: false });
+
+      if (error) throw error;
+      return data as Event[];
+    },
+    enabled: !!organizerId,
+  });
+}
+
 export function useEvent(eventId: string) {
   return useQuery({
     queryKey: ['event', eventId],
